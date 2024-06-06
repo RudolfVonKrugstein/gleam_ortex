@@ -48,17 +48,19 @@ fn run(
     model::run(model, inputs).map_err(|e| rustler::Error::Term(Box::new(e.to_string())))
 }
 
+#[rustler::nif()]
+fn ping() {
+    println!("ping");
+}
+
 #[rustler::nif(schedule = "DirtyCpu")]
-fn from_binary(bin: Binary, shape: Term, dtype: Term) -> NifResult<ResourceArc<OrtexTensor>> {
-    let shape: Vec<usize> = rustler::types::tuple::get_tuple(shape)?
-        .iter()
-        .map(|x| -> NifResult<usize> { Ok(x.decode::<usize>())? })
-        .collect::<NifResult<Vec<usize>>>()?;
+fn from_binary(bin: Binary, shape: Vec<usize>, dtype: Term) -> NifResult<ResourceArc<OrtexTensor>> {
     let (dtype_t, dtype_bits): (Term, usize) = dtype.decode()?;
     let dtype_str = dtype_t.atom_to_string()?;
 
-    utils::from_binary(bin, shape, dtype_str, dtype_bits)
-        .map_err(|e| rustler::Error::Term(Box::new(e.to_string())))
+    let result = utils::from_binary(bin, shape, dtype_str, dtype_bits)
+        .map_err(|e| rustler::Error::Term(Box::new(e.to_string())));
+    result
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
@@ -106,7 +108,7 @@ pub fn concatenate<'a>(
 }
 
 rustler::init!(
-    "Elixir.Ortex.Native",
+    "native",
     [
         run,
         init,
