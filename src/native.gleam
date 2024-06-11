@@ -1,7 +1,6 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
 import gleam/option.{type Option}
-import gleam/result
 
 pub type NifResult(a, b)
 
@@ -9,22 +8,19 @@ pub type Model
 
 pub type Tensor
 
-@external(erlang, "native", "nif_result_to_result")
-pub fn nif_result_to_result(nr: NifResult(a, b)) -> Result(a, b)
-
 @external(erlang, "native", "ping")
 pub fn ping() -> Nil
 
-@external(erlang, "native", "init")
-pub fn init(path: String, eps: List(Atom), opt: Int) -> NifResult(Model, String)
+@external(erlang, "native", "init_result")
+pub fn init(path: String, eps: List(Atom), opt: Int) -> Result(Model, String)
 
-@external(erlang, "native", "run")
+@external(erlang, "native", "run_result")
 pub fn run(
   model: Model,
   inputs: List(Tensor),
-) -> NifResult(#(List(Tensor), List(Int), atom.Atom, Int), String)
+) -> Result(List(#(Tensor, List(Int), atom.Atom, Int)), String)
 
-@external(erlang, "narive", "show_ession")
+@external(erlang, "native", "show_ession_result")
 pub fn show_session(
   model: Model,
 ) -> Result(
@@ -35,34 +31,34 @@ pub fn show_session(
   String,
 )
 
-@external(erlang, "native", "from_binary")
+@external(erlang, "native", "from_binary_result")
 pub fn from_binary(
   bin: BitArray,
   shape: List(Int),
   dtype: #(atom.Atom, Int),
-) -> NifResult(Tensor, String)
+) -> Result(Tensor, String)
 
-@external(erlang, "native", "to_binary")
+@external(erlang, "native", "to_binary_result")
 pub fn to_binary(
   tensor: Tensor,
   bits: Int,
   limit: Int,
-) -> NifResult(BitArray, String)
+) -> Result(BitArray, String)
 
-@external(erlang, "native", "slice")
+@external(erlang, "native", "slice_result")
 pub fn slice(
   tensor: Tensor,
   start_indicies: List(Int),
   lengths: List(Int),
   strides: List(Int),
-) -> NifResult(Tensor, String)
+) -> Result(Tensor, String)
 
-@external(erlang, "native", "reshape")
-pub fn reshape(tensor: Tensor, shape: List(Int)) -> NifResult(Tensor, String)
+@external(erlang, "native", "reshape_result")
+pub fn reshape(tensor: Tensor, shape: List(Int)) -> Result(Tensor, String)
 
-@external(erlang, "native", "concatenate")
+@external(erlang, "native", "concatenate_result")
 pub fn concatenate(
   tensor: Tensor,
   dtype: atom.Atom,
   axis: Int,
-) -> NifResult(Tensor, String)
+) -> Result(Tensor, String)

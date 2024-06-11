@@ -48,11 +48,6 @@ fn run(
     model::run(model, inputs).map_err(|e| rustler::Error::Term(Box::new(e.to_string())))
 }
 
-#[rustler::nif()]
-fn ping() {
-    println!("ping");
-}
-
 #[rustler::nif(schedule = "DirtyCpu")]
 fn from_binary(bin: Binary, shape: Vec<usize>, dtype: Term) -> NifResult<ResourceArc<OrtexTensor>> {
     let (dtype_t, dtype_bits): (Term, usize) = dtype.decode()?;
