@@ -1,20 +1,19 @@
 -module(native).
--export([ping/0, init_result/3, run_result/2, from_binary_result/3, to_binary_result/3, show_session_result/1, slice_result/4, reshape_result/2, concatenate_result/3]).
+-export([ping/0, init/3, run/2, from_binary/3,
+         to_binary/3, show_session/1, slice/4,
+         reshape/2, concatenate/3, nif_result_to_result/1]).
 -nifs([init/3, run/2, from_binary/3, to_binary/3, show_session/1, slice/4, reshape/2, concatenate/3]).
 -on_load(load/0).
 
 
 load() ->
-  io:fwrite("loading~n", []),
   ok = erlang:load_nif("native/ortex/target/debug/libortex", 0).
 
 ping() ->
-  io:fwrite("ping~n", []).
-  % exit(nif_library_not_loaded).
+  io:fwrite("ping!~n", []).
 
 nif_result_to_result({error, Val}) -> {error, Val};
 nif_result_to_result(Val) -> {ok, Val}.
-    
 
 % When loading a NIF module, dummy clauses for all NIF function are required.
 % NIF dummies usually just error out when called when the NIF is not loaded, as that should never normally happen.
@@ -35,10 +34,11 @@ run_result(model,inputs) ->
 from_binary(_bin, _shape, _type) ->
   exit(nif_library_not_loaded).
 
-from_binary_result(_bin, _shape, _type) ->
-  {ok , <<>>}.
-  % nif_result = from_binary(bin, shape, type),
-  % nif_result_to_result(nif_result).
+from_binary_result(bin, shape, type) ->
+  io:fwrite("hello~n", []),
+  %nif_result = from_binary(bin, shape, type),
+  io:fwrite("hello2~n", []),
+  nif_result_to_result(nil).
 
 to_binary(_reference, _bits, _limit) ->
   exit(nif_library_not_loaded).
