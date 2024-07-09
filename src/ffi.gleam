@@ -1,10 +1,11 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
+import gleam/io
 import gleam/option.{type Option}
 
-pub type Model
+pub type OrtModel
 
-pub type Tensor
+pub type OrtTensor
 
 pub type NifResult(val, err)
 
@@ -19,28 +20,28 @@ pub fn init_nif(
   path: String,
   eps: List(Atom),
   opt: Int,
-) -> NifResult(Model, String)
+) -> NifResult(OrtModel, String)
 
-pub fn init(path: String, eps: List(Atom), opt: Int) -> Result(Model, String) {
+pub fn init(path: String, eps: List(Atom), opt: Int) -> Result(OrtModel, String) {
   init_nif(path, eps, opt) |> nif_result_to_result
 }
 
-@external(erlang, "native_erlang", "run")
+@external(erlang, "native", "run")
 pub fn run_nif(
-  model: Model,
-  inputs: List(Tensor),
-) -> NifResult(List(#(Tensor, List(Int), atom.Atom, Int)), String)
+  model: OrtModel,
+  inputs: List(OrtTensor),
+) -> NifResult(List(#(OrtTensor, List(Int), atom.Atom, Int)), String)
 
 pub fn run(
-  model: Model,
-  inputs: List(Tensor),
-) -> Result(List(#(Tensor, List(Int), atom.Atom, Int)), String) {
+  model: OrtModel,
+  inputs: List(OrtTensor),
+) -> Result(List(#(OrtTensor, List(Int), atom.Atom, Int)), String) {
   run_nif(model, inputs) |> nif_result_to_result
 }
 
 @external(erlang, "native", "show_ession")
 pub fn show_session_nif(
-  model: Model,
+  model: OrtModel,
 ) -> Result(
   #(
     List(#(String, String, Option(List(Int)))),
@@ -54,21 +55,26 @@ fn from_binary_nif(
   bin: BitArray,
   shape: List(Int),
   dtype: #(atom.Atom, Int),
-) -> NifResult(Tensor, String)
+) -> NifResult(OrtTensor, String)
 
 pub fn from_binary(bin: BitArray, shape: List(Int), dtype: #(atom.Atom, Int)) {
-  from_binary_nif(bin, shape, dtype) |> nif_result_to_result
+  let nif_result = from_binary_nif(bin, shape, dtype)
+  io.debug("nif result")
+  io.debug(nif_result)
+  let result = nif_result_to_result(nif_result)
+  io.debug(result)
+  result
 }
 
 @external(erlang, "native", "to_binary")
 pub fn to_binary_nif(
-  tensor: Tensor,
+  tensor: OrtTensor,
   bits: Int,
   limit: Int,
 ) -> NifResult(BitArray, String)
 
 pub fn to_binary(
-  tensor: Tensor,
+  tensor: OrtTensor,
   bits: Int,
   limit: Int,
 ) -> Result(BitArray, String) {
@@ -77,18 +83,25 @@ pub fn to_binary(
 
 @external(erlang, "native", "slice")
 pub fn slice_nif(
-  tensor: Tensor,
+  tensor: OrtTensor,
   start_indicies: List(Int),
   lengths: List(Int),
   strides: List(Int),
-) -> Result(Tensor, String)
+) -> Result(OrtTensor, String)
 
 @external(erlang, "native", "reshape")
-pub fn reshape_nif(tensor: Tensor, shape: List(Int)) -> Result(Tensor, String)
+pub fn reshape_nif(
+  tensor: OrtTensor,
+  shape: List(Int),
+) -> NifResult(OrtTensor, String)
+
+pub fn reshape(tensor: OrtTensor, shape: List(Int)) -> Result(OrtTensor, String) {
+  reshape_nif(tensor, shape) |> nif_result_to_result
+}
 
 @external(erlang, "native", "concatenate")
 pub fn concatenate_nif(
-  tensor: Tensor,
+  tensor: OrtTensor,
   dtype: atom.Atom,
   axis: Int,
-) -> Result(Tensor, String)
+) -> Result(OrtTensor, String)
