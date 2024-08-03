@@ -1,4 +1,5 @@
 import ffi.{type OrtTensor}
+import gleam/bool
 import gleam/erlang/atom
 import gleam/int
 import gleam/io
@@ -26,7 +27,7 @@ pub fn broadcast_float(
 
   let data =
     copy(
-      <<value:float-size(precision)>>,
+      <<value:float-size(precision)-native>>,
       list.fold(over: shape, from: 1, with: fn(a, b) { a * b }),
     )
 
@@ -41,21 +42,24 @@ fn binary_to_floats(
   binary: BitArray,
   precision: Int,
 ) -> Result(List(Float), String) {
-        io.debug(binary)
   case binary {
     <<>> -> Ok([])
-    <<a:float-32, rest:bits>> if precision == 32 -> {
+    <<a:float-32-native, rest:bits>> if precision == 32 -> {
       use tail <- result.try(binary_to_floats(rest, 32))
       Ok([a, ..tail])
     }
 
-    <<a:float-64, rest:bits>> if precision == 64 -> {
+    <<a:float-64-native, rest:bits>> if precision == 64 -> {
       use tail <- result.try(binary_to_floats(rest, 64))
       Ok([a, ..tail])
     }
 
     _ if precision != 32 && precision != 64 -> Error("impossible precision")
-    _ -> Error("BitString connaot be converted to float list with precision " |> string.append(int.to_string(precision)))
+    _ ->
+      Error(
+        "BitString connaot be converted to float list with precision "
+        |> string.append(int.to_string(precision)),
+      )
   }
 }
 
@@ -78,6 +82,59 @@ pub fn flatten(tensor: Tensor) -> Result(Tensor, String) {
       reshape(tensor, [
         list.fold(over: shape, from: 1, with: fn(a, b) { a * b }),
       ])
+  }
+}
+
+fn concatenate_shapes(shapes: List(Int), axis: Int) {
+  case shapes {
+    [] -> Ok([])
+    [[], ..shapes] -> {
+      let any_not_empty = bool.any(list.map(shapes, fn(s) { !list.is_empty() }))
+      use <- bool.guard(!all_empty, Error("all shapes must be of same length"))
+      Ok([])
+    }
+    [[shape0_head, ..], ..shapes] -> {
+      let any_empty = bool.any(list.map(shapes, fn(s) { list.is_empty() }))
+      use <- bool.guard(any_empty, Error("all shapes must be of same length"))
+
+      let heads = result.values(list.map(shapes, list.head))
+      let tails = result.values(list.map(shapes, list.tail))
+
+      use rest_shape <- concatenate_shapes(tails, axis - 1)
+
+      case axis {
+        0 -> Ok([list.sum(heads), ..rest_shape])
+        _ -> {
+          let all_equal = bool.all(heads, fn(h) { Ok(h) == shape0_head })
+          use <- bool.guard(
+            !all_equal,
+            Error("dimensions must match on all axis, but the concatenate axis"),
+          )
+          Ok([])
+        }
+      }
+    }
+  }
+}
+
+pub fn concatenate(tensors: List(Tensor), axis: Int) -> Result(Tensor, String) {
+  case tensors {
+    [] -> Error("cannot concatenate 0 tensors")
+    [Tensor(tensor0, shape0, dtype0), ..rest_tensors] -> {
+      let ort_tensors = list.map(tensors, fn(t) { t.data })
+      let shapes = list.map(tensors, fn(t) { t.shape })
+      let dtypes = list.map(tensors, fn(t) { t.dtype })
+
+      use <- bool.guard(
+        bool.any(list.map(dtypes, fn(d) { d != dtype0 })),
+        Error("Input dtypes must match"),
+      )
+
+      use shape <- result.try(concatenate_shapes(shapes, axis))
+      use tensor <- result.try(ffi.concatenate(tensors, dtype0))
+
+      Ok(Tensor(tensor, shape, dtype0))
+    }
   }
 }
 

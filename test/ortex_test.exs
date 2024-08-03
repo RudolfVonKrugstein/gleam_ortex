@@ -25,7 +25,6 @@ defmodule OrtexTest do
 
   test "Nx.Serving with tinymodel" do
     model = Ortex.load("./models/tinymodel.onnx")
-
     serving = Nx.Serving.new(Ortex.Serving, model)
 
     # Create a batch of size 3 with {int32, float32} inputs

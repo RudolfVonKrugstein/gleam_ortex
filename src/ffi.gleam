@@ -59,10 +59,7 @@ fn from_binary_nif(
 
 pub fn from_binary(bin: BitArray, shape: List(Int), dtype: #(atom.Atom, Int)) {
   let nif_result = from_binary_nif(bin, shape, dtype)
-  io.debug("nif result")
-  io.debug(nif_result)
   let result = nif_result_to_result(nif_result)
-  io.debug(result)
   result
 }
 
@@ -101,7 +98,11 @@ pub fn reshape(tensor: OrtTensor, shape: List(Int)) -> Result(OrtTensor, String)
 
 @external(erlang, "native", "concatenate")
 pub fn concatenate_nif(
-  tensor: OrtTensor,
+  tensors: List(OrtTensor),
   dtype: atom.Atom,
   axis: Int,
-) -> Result(OrtTensor, String)
+) -> NifResult(OrtTensor, String)
+
+pub fn concatenate(tensors: List(OrtTensor), dtype: atom.Atom, axis: Int) {
+  concatenate_nif(tensors, dtype, axis) |> nif_result_to_result
+}
